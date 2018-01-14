@@ -85,7 +85,6 @@ sdrplay_source_c::sdrplay_source_c (const std::string &args)
                     gr::io_signature::make(MIN_IN, MAX_IN, sizeof (gr_complex)),
                     gr::io_signature::make(MIN_OUT, MAX_OUT, sizeof (gr_complex))),
   _auto_gain(false),
-  _gain(40),
   _gRdB(40),
   _lna(0),
   _bcastNotch(0),
@@ -279,6 +278,7 @@ void sdrplay_source_c::startStreaming(void)
   _streaming = true;
 
   updateGains();
+  set_gain_mode(get_gain_mode(/*channel*/ 0), /*channel*/ 0);
 
   int gRdB = _gRdB;
   int gRdBsystem = 0;
@@ -462,7 +462,7 @@ std::vector<std::string> sdrplay_source_c::get_gain_names(size_t chan)
   std::vector<std::string> gains;
 
   gains += "LNA_ATTEN_STEP";
-  gains += "SYS_ATTEN_DB";
+  gains += "IF_ATTEN_DB";
 
   // RSP1A and RSP2 have broadcast notch filters, and RSP1A has a DAB
   // notch filter. Show all controls for all models, mainly because
@@ -527,12 +527,12 @@ bool sdrplay_source_c::set_gain_mode(bool automatic, size_t chan)
       mir_sdr_AgcControl(mir_sdr_AGC_5HZ, -30, 0, 0, 0, 0, 0);
     }
     else {
-      mir_sdr_AgcControl(mir_sdr_AGC_DISABLE, 0, 0, 0, 0, 0, 0);
-      set_gain(get_gain(0));
+      mir_sdr_AgcControl(mir_sdr_AGC_DISABLE, -30, 0, 0, 0, 0, 0);
+      updateGains();
     }
   }
 
-  return get_gain_mode(chan);
+  return _auto_gain;
 }
 
 bool sdrplay_source_c::get_gain_mode(size_t chan)
@@ -568,53 +568,52 @@ int sdrplay_source_c::checkLNA(int lna)
 
 void sdrplay_source_c::updateGains(void)
 {
-  int gRdBsystem = 0;
-  _gRdB = _gain;
   int gRdB = _gRdB;
-  int lna = checkLNA(_lna);
 
-  mir_sdr_GetGrByFreq(_rfHz/1e6, (mir_sdr_BandT *)&_band, &gRdB, lna, &gRdBsystem,
-                      mir_sdr_USE_RSP_SET_GR);
-  if (_streaming)
-    mir_sdr_RSP_SetGr(gRdB, lna, 1 /*absolute*/, 0 /*immediate*/);
+  if (_streaming && !_auto_gain)
+    mir_sdr_RSP_SetGr(gRdB, checkLNA(_lna), 1 /*absolute*/, 0 /*immediate*/);
 }
 
 double sdrplay_source_c::set_gain(double gain, size_t chan)
 {
-  _gain = (int)gain;
-
-  if (_streaming)
-    updateGains();
-
-  return gain;
+  set_gain(gain, "IF_ATTEN_DB");
+  return get_gain("IF_ATTEN_DB");
 }
 
 double sdrplay_source_c::set_gain(double gain, const std::string & name, size_t chan)
 {
-  int bcastNotchChanged = 0;
-  int dabNotchChanged = 0;
+  bool bcastNotchChanged = false;
+  bool dabNotchChanged = false;
+  bool gainChanged = false;
 
   if (name == "LNA_ATTEN_STEP") {
+    if (gain != _lna)
+      gainChanged = true;
     _lna = int(gain);
+  }
+  else if (name == "IF_ATTEN_DB") {
+    // Ignore out-of-bounds values, since caller knows limits. (GQRX spurious calls).
+    if (gain >= 20.0 && gain <= 59.0 && gain != _gRdB) {
+      gainChanged = true;
+      _gRdB = int(gain);
+    }
   }
   // RSP1A, RSP2
   else if (name == "BCAST_NOTCH" && (_hwVer == 2 || _hwVer == 255)) {
     if (int(gain) != _bcastNotch)
-      bcastNotchChanged = 1;
+      bcastNotchChanged = true;
     _bcastNotch = int(gain);
   }
   // RSP1A
   else if (name == "DAB_NOTCH" && _hwVer == 255) {
     if (int(gain) != _dabNotch)
-      dabNotchChanged = 1;
+      dabNotchChanged = true;
     _dabNotch = int(gain);
-  }
-  else {
-    _gain = int(gain);
   }
 
   if (_streaming) {
-    updateGains();
+    if (gainChanged)
+      updateGains();
 
     if (bcastNotchChanged) {
       if (_hwVer == 255 ) {
@@ -630,12 +629,12 @@ double sdrplay_source_c::set_gain(double gain, const std::string & name, size_t 
     }
   }
 
-  return gain;
+  return get_gain(chan);
 }
 
 double sdrplay_source_c::get_gain(size_t chan)
 {
-  return _gain;
+  return get_gain("IF_ATTEN_DB");
 }
 
 double sdrplay_source_c::get_gain(const std::string & name, size_t chan)
@@ -646,8 +645,10 @@ double sdrplay_source_c::get_gain(const std::string & name, size_t chan)
     return _bcastNotch;
   else if (name == "DAB_NOTCH")
     return _dabNotch;
+  else if (name == "IF_ATTEN_DB")
+    return _gRdB;
   else
-    return _gain;
+    return 0;
 }
 
 std::vector<std::string> sdrplay_source_c::get_antennas(size_t chan)
