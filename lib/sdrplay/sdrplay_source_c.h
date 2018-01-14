@@ -120,6 +120,7 @@ public:
 
    void set_dc_offset_mode( int mode, size_t chan = 0 );
    void set_dc_offset( const std::complex<double> &offset, size_t chan = 0 );
+   void set_iq_balance_mode( int mode, size_t chan = 0 );
 
    double set_bandwidth( double bandwidth, size_t chan = 0 );
    double get_bandwidth( size_t chan = 0 );
@@ -131,7 +132,6 @@ private:
   void reallocateBuffers(int size, int num);
   void reinitDevice(int reason);
   int checkLNA(int lna);
-  void updateGains(void);
   void streamCallback(short *xi, short *xq, unsigned int firstSampleNum,
                       int grChanged, int rfChanged, int fsChanged,
                       unsigned int numSamples, unsigned int reset,
@@ -144,21 +144,20 @@ private:
                                  void *cbContext);
   static void gainChangeCallbackWrap(unsigned int gRdB, unsigned int lnaGRdB, void *cbContext);
 
-  bool _auto_gain;
-
+   bool _auto_gain;
    int _gain;
    int _gRdB;
    int _lna;
    int _bcastNotch;
    int _dabNotch;
-   int _band;
    double _fsHz;
    int _decim;
    double _rfHz;
    mir_sdr_Bw_MHzT _bwType;
    mir_sdr_If_kHzT _ifType;
    int _samplesPerPacket;
-   int _dcMode;
+   bool _dcMode;
+   bool _iqMode;
    unsigned char _hwVer;
    int _devIndex;
    std::string _antenna;

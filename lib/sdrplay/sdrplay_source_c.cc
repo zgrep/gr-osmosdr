@@ -89,13 +89,13 @@ sdrplay_source_c::sdrplay_source_c (const std::string &args)
   _lna(0),
   _bcastNotch(0),
   _dabNotch(0),
-  _band(0),
   _fsHz(8e6),
   _decim(1),
   _rfHz(100e6),
   _bwType(mir_sdr_BW_6_000),
   _ifType(mir_sdr_IF_Zero),
-  _dcMode(1),
+  _dcMode(false),
+  _iqMode(false),
   _buffer(NULL),
   _streaming(false),
   _flowgraphRunning(false),
@@ -237,8 +237,7 @@ void sdrplay_source_c::gainChangeCallback(unsigned int gRdB,
                                           unsigned int lnaGRdB,
                                           void *cbContext)
 {
-  std::cerr << "GR change, BB+MIX -" << gRdB << "dB, LNA -" << lnaGRdB
-            << "dB, band " << _band << std::endl;
+  std::cerr << "GR change, BB+MIX -" << gRdB << "dB, LNA -" << lnaGRdB << std::endl;
 }
 
 // Callback wrapper
@@ -277,7 +276,6 @@ void sdrplay_source_c::startStreaming(void)
 
   _streaming = true;
 
-  updateGains();
   set_gain_mode(get_gain_mode(/*channel*/ 0), /*channel*/ 0);
 
   int gRdB = _gRdB;
@@ -299,9 +297,7 @@ void sdrplay_source_c::startStreaming(void)
   // Set decimation with halfband filter
   mir_sdr_DecimateControl(_decim != 1, _decim, 1);
 
-  // Note that gqrx never calls set_dc_offset_mode() if the IQ balance
-  // module is available.
-  set_dc_offset_mode(osmosdr::source::DCOffsetOff, 0);
+  mir_sdr_DCoffsetIQimbalanceControl(_dcMode, _iqMode);
 
   // Model-specific initialization
   if (_hwVer == 2) {
@@ -343,7 +339,6 @@ void sdrplay_source_c::reinitDevice(int reason)
   int gRdB;
   int gRdBsystem; // Returned overall system gain reduction
 
-  updateGains();
   gRdB = _gRdB;
 
   // Tell stream CB to return
@@ -363,7 +358,8 @@ void sdrplay_source_c::reinitDevice(int reason)
                  );
 
   // Set decimation with halfband filter
-  mir_sdr_DecimateControl(_decim != 1, _decim, 1);
+  if (reason && (int)mir_sdr_CHANGE_FS_FREQ)
+    mir_sdr_DecimateControl(_decim != 1, _decim, 1);
 
   _bufferReady.notify_one();
 }
@@ -521,14 +517,14 @@ osmosdr::gain_range_t sdrplay_source_c::get_gain_range(const std::string & name,
 
 bool sdrplay_source_c::set_gain_mode(bool automatic, size_t chan)
 {
+  std::cerr << "***** set gain mode " << automatic << std::endl;
   _auto_gain = automatic;
   if (_streaming) {
     if (automatic) {
-      mir_sdr_AgcControl(mir_sdr_AGC_5HZ, -30, 0, 0, 0, 0, 0);
+      mir_sdr_AgcControl(mir_sdr_AGC_5HZ, -30, 0, 0, 0, 0, checkLNA(_lna));
     }
     else {
-      mir_sdr_AgcControl(mir_sdr_AGC_DISABLE, -30, 0, 0, 0, 0, 0);
-      updateGains();
+      mir_sdr_AgcControl(mir_sdr_AGC_DISABLE, -30, 0, 0, 0, 0, checkLNA(_lna));
     }
   }
 
@@ -566,14 +562,6 @@ int sdrplay_source_c::checkLNA(int lna)
   return lna;
 }
 
-void sdrplay_source_c::updateGains(void)
-{
-  int gRdB = _gRdB;
-
-  if (_streaming && !_auto_gain)
-    mir_sdr_RSP_SetGr(gRdB, checkLNA(_lna), 1 /*absolute*/, 0 /*immediate*/);
-}
-
 double sdrplay_source_c::set_gain(double gain, size_t chan)
 {
   set_gain(gain, "IF_ATTEN_DB");
@@ -585,6 +573,8 @@ double sdrplay_source_c::set_gain(double gain, const std::string & name, size_t 
   bool bcastNotchChanged = false;
   bool dabNotchChanged = false;
   bool gainChanged = false;
+
+  std::cerr << "***** set_gain " << name << " " << gain << std::endl;
 
   if (name == "LNA_ATTEN_STEP") {
     if (gain != _lna)
@@ -613,7 +603,7 @@ double sdrplay_source_c::set_gain(double gain, const std::string & name, size_t 
 
   if (_streaming) {
     if (gainChanged)
-      updateGains();
+      mir_sdr_RSP_SetGr(_gRdB, checkLNA(_lna), 1 /*absolute*/, 0 /*immediate*/);
 
     if (bcastNotchChanged) {
       if (_hwVer == 255 ) {
@@ -698,36 +688,27 @@ std::string sdrplay_source_c::get_antenna(size_t chan)
   return _antenna.c_str();
 }
 
-// NOTE: DC offset controlled here, IQ balance always on.
 void sdrplay_source_c::set_dc_offset_mode(int mode, size_t chan)
 {
-  if (osmosdr::source::DCOffsetOff == mode) {
-    _dcMode = 0;
-    if (_streaming) {
-      mir_sdr_SetDcMode(0, 0);
-      mir_sdr_DCoffsetIQimbalanceControl(0, 0);
-    }
+  _dcMode = (osmosdr::source::DCOffsetAutomatic == mode);
+
+  if (_dcMode) {
+    mir_sdr_SetDcMode(4, 1);
+    mir_sdr_SetDcTrackTime(63);
   }
-  else if (osmosdr::source::DCOffsetManual == mode) {
-    _dcMode = 0;
-    if (_streaming) {
-      mir_sdr_SetDcMode(0, 1);
-      mir_sdr_DCoffsetIQimbalanceControl(0, 1);
-    }
-  }
-  else if (osmosdr::source::DCOffsetAutomatic == mode) {
-    _dcMode = 1;
-    if (_streaming) {
-      mir_sdr_SetDcMode(4, 1);
-      mir_sdr_DCoffsetIQimbalanceControl(1, 1);
-      mir_sdr_SetDcTrackTime(63);
-    }
-  }
+  mir_sdr_DCoffsetIQimbalanceControl(_dcMode, _iqMode);
 }
 
 void sdrplay_source_c::set_dc_offset(const std::complex<double> &offset, size_t chan)
 {
   std::cerr << "set_dc_offset(): not implemented" << std::endl;
+}
+
+void sdrplay_source_c::set_iq_balance_mode(int mode, size_t chan)
+{
+  _iqMode = (osmosdr::source::IQBalanceAutomatic == mode);
+
+  mir_sdr_DCoffsetIQimbalanceControl(_dcMode, _iqMode);
 }
 
 double sdrplay_source_c::set_bandwidth(double bandwidth, size_t chan)
