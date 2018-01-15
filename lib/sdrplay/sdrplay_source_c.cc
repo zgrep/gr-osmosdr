@@ -94,6 +94,7 @@ sdrplay_source_c::sdrplay_source_c (const std::string &args)
   _rfHz(100e6),
   _bwType(mir_sdr_BW_6_000),
   _ifType(mir_sdr_IF_Zero),
+  _loMode(mir_sdr_LO_Auto),
   _dcMode(false),
   _iqMode(false),
   _buffer(NULL),
@@ -123,9 +124,21 @@ sdrplay_source_c::sdrplay_source_c (const std::string &args)
     _antenna = "RX";
   }
 
+  // bias=[0|1] to turn [off|on] bias tee. Default is off.
   _biasT = 0;
-  if ( dict.count("bias") ) {
-    _biasT = boost::lexical_cast<int>( dict["bias"] );
+  if (dict.count("bias")) {
+    _biasT = boost::lexical_cast<int>(dict["bias"]);
+  }
+
+  // lo=[120|144|168] to set first LO to 120/144/168 MHz. Default is Auto.
+  if (dict.count("lo")) {
+    int loMode = boost::lexical_cast<int>(dict["lo"]);
+    if (loMode == 120)
+      _loMode = mir_sdr_LO_120MHz;
+    else if (loMode == 144)
+      _loMode = mir_sdr_LO_144MHz;
+    else if (loMode == 168)
+      _loMode = mir_sdr_LO_168MHz;
   }
 }
 
@@ -272,6 +285,9 @@ void sdrplay_source_c::startStreaming(void)
   else if (_hwVer == 255)
     mir_sdr_rsp1a_BiasT(_biasT);
 
+  // Set first LO frequency
+  mir_sdr_SetLoMode(_loMode);
+
   _streaming = true;
 
   set_gain_mode(get_gain_mode(/*channel*/ 0), /*channel*/ 0);
@@ -345,7 +361,7 @@ void sdrplay_source_c::reinitDevice(int reason)
                  _rfHz / 1e6,
                  _bwType,
                  _ifType,
-                 mir_sdr_LO_Auto,
+                 _loMode,
                  checkLNA(_lna),
                  &gRdBsystem,
                  mir_sdr_USE_RSP_SET_GR,

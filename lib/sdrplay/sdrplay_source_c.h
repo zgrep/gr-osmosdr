@@ -154,6 +154,7 @@ private:
    double _rfHz;
    mir_sdr_Bw_MHzT _bwType;
    mir_sdr_If_kHzT _ifType;
+   mir_sdr_LoModeT _loMode;
    int _samplesPerPacket;
    bool _dcMode;
    bool _iqMode;
