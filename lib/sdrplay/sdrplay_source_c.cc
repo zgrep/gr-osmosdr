@@ -197,11 +197,12 @@ void sdrplay_source_c::streamCallback(short *xi, short *xq,
     if (!_streaming || _reinit || !_flowgraphRunning)
       return;
 
-    // If buffer is not ready for write, wait a short time. Discard samples on timeout.
-    if (!_buffer)
+    // While buffer is not ready for write, wait a short time.
+    while (!_buffer) {
       if (boost::cv_status::timeout ==
           _bufferReady.wait_for(lock, boost::chrono::milliseconds(250)))
         return;
+    }
 
     // Copy until out of samples or buffer is full
     while ((i < numSamples) && (_bufferSpaceRemaining > 0)) {
