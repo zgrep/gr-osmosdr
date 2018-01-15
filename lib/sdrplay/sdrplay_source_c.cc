@@ -138,13 +138,17 @@ sdrplay_source_c::~sdrplay_source_c ()
 
 bool sdrplay_source_c::start(void)
 {
+  boost::mutex::scoped_lock lock(_bufferMutex);
   _flowgraphRunning = true;
   return true;
 }
 
 bool sdrplay_source_c::stop(void)
 {
+  boost::mutex::scoped_lock lock(_bufferMutex);
   _flowgraphRunning = false;
+  // FG may be modified, so assume copied pointer is invalid
+  _buffer = NULL;
   return true;
 }
 
@@ -180,8 +184,7 @@ int sdrplay_source_c::work(int noutput_items,
 void sdrplay_source_c::streamCallback(short *xi, short *xq,
                                       unsigned int firstSampleNum,
                                       int grChanged, int rfChanged, int fsChanged,
-                                      unsigned int numSamples, unsigned int reset,
-                                      void *cbContext)
+                                      unsigned int numSamples, unsigned int reset)
 {
   unsigned int i = 0;
   _reinit = false;
@@ -228,14 +231,12 @@ void sdrplay_source_c::streamCallbackWrap(short *xi, short *xq,
   obj->streamCallback(xi, xq,
                       firstSampleNum,
                       grChanged, rfChanged, fsChanged,
-                      numSamples, reset,
-                      cbContext);
+                      numSamples, reset);
 }
 
 // Called by strplay streamer thread when gain reduction is changed.
 void sdrplay_source_c::gainChangeCallback(unsigned int gRdB,
-                                          unsigned int lnaGRdB,
-                                          void *cbContext)
+                                          unsigned int lnaGRdB)
 {
   std::cerr << "GR change, BB+MIX -" << gRdB << "dB, LNA -" << lnaGRdB << std::endl;
 }
@@ -246,17 +247,13 @@ void sdrplay_source_c::gainChangeCallbackWrap(unsigned int gRdB,
                                               void *cbContext)
 {
   sdrplay_source_c *obj = (sdrplay_source_c *)cbContext;
-  obj->gainChangeCallback(gRdB,
-                          lnaGRdB,
-                          cbContext);
+  obj->gainChangeCallback(gRdB, lnaGRdB);
 }
 
 void sdrplay_source_c::startStreaming(void)
 {
-  if (_streaming) {
-    std::cerr << "startStreaming(): already streaming." << std::endl;
+  if (_streaming)
     return;
-  }
 
   unsigned int numDevices;
   mir_sdr_DeviceT mirDevices[MAX_SUPPORTED_DEVICES];
@@ -313,10 +310,8 @@ void sdrplay_source_c::startStreaming(void)
 
 void sdrplay_source_c::stopStreaming(void)
 {
-  if (!_streaming) {
-    std::cerr << "stopStreaming(): already stopped." << std::endl;
+  if (!_streaming)
     return;
-  }
 
   _streaming = false;
 
@@ -517,7 +512,6 @@ osmosdr::gain_range_t sdrplay_source_c::get_gain_range(const std::string & name,
 
 bool sdrplay_source_c::set_gain_mode(bool automatic, size_t chan)
 {
-  std::cerr << "***** set gain mode " << automatic << std::endl;
   _auto_gain = automatic;
   if (_streaming) {
     if (automatic) {
@@ -573,8 +567,6 @@ double sdrplay_source_c::set_gain(double gain, const std::string & name, size_t 
   bool bcastNotchChanged = false;
   bool dabNotchChanged = false;
   bool gainChanged = false;
-
-  std::cerr << "***** set_gain " << name << " " << gain << std::endl;
 
   if (name == "LNA_ATTEN_STEP") {
     if (gain != _lna)
