@@ -110,7 +110,10 @@ sdrplay_source_c::sdrplay_source_c (const std::string &args)
     _devIndex = 0;
   }
 
-  mir_sdr_DebugEnable(1);
+  int debug = 0;
+  if (dict.count("debug") && (boost::lexical_cast<int>(dict["debug"]) != 0))
+    debug = 1;
+  mir_sdr_DebugEnable(debug);
 
   unsigned int numDevices;
   mir_sdr_DeviceT mirDevices[MAX_SUPPORTED_DEVICES];
