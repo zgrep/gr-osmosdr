@@ -159,7 +159,7 @@ private:
    bool _dcMode;
    bool _iqMode;
    unsigned char _hwVer;
-   int _devIndex;
+   unsigned int _devIndex;
    std::string _antenna;
    int _biasT;
 

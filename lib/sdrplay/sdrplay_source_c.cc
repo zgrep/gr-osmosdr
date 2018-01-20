@@ -110,15 +110,20 @@ sdrplay_source_c::sdrplay_source_c (const std::string &args)
     _devIndex = 0;
   }
 
+  unsigned int numDevices;
+  mir_sdr_DeviceT mirDevices[MAX_SUPPORTED_DEVICES];
+  mir_sdr_GetDevices(mirDevices, &numDevices, MAX_SUPPORTED_DEVICES);
+  if (((_devIndex+1 > numDevices) || !mirDevices[_devIndex].devAvail)) {
+    std::cerr << "Failed to open SDRplay device " + std::to_string(_devIndex) << std::endl;
+    throw std::runtime_error("Failed to open SDRplay device " + std::to_string(_devIndex));
+  }
+
+  _hwVer = mirDevices[_devIndex].hwVer;
+
   int debug = 0;
   if (dict.count("debug") && (boost::lexical_cast<int>(dict["debug"]) != 0))
     debug = 1;
   mir_sdr_DebugEnable(debug);
-
-  unsigned int numDevices;
-  mir_sdr_DeviceT mirDevices[MAX_SUPPORTED_DEVICES];
-  mir_sdr_GetDevices(mirDevices, &numDevices, MAX_SUPPORTED_DEVICES);
-  _hwVer = mirDevices[_devIndex].hwVer;
 
   if (_hwVer == 2) {
     _antenna = "A";
