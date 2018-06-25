@@ -140,7 +140,7 @@ private:
   static void streamCallbackWrap(short *xi, short *xq, unsigned int firstSampleNum,
                                  int grChanged, int rfChanged, int fsChanged,
                                  unsigned int numSamples, unsigned int reset,
-                                 void *cbContext);
+                                 unsigned int hwRemoved, void *cbContext);
   static void gainChangeCallbackWrap(unsigned int gRdB, unsigned int lnaGRdB, void *cbContext);
 
    bool _auto_gain;
