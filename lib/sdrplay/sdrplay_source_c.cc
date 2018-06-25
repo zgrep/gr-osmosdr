@@ -63,8 +63,10 @@ static std::string hwName(int hwVer)
     return "RSP1";
   if (hwVer == 2)
     return "RSP2";
-  if (hwVer ==255)
+  if (hwVer == 255)
     return "RSP1A";
+  if (hwVer == 3)
+    return "RSPduo";
   return "UNK";
 }
 
@@ -84,19 +86,19 @@ sdrplay_source_c::sdrplay_source_c (const std::string &args)
   : gr::sync_block ("sdrplay_source_c",
                     gr::io_signature::make(MIN_IN, MAX_IN, sizeof (gr_complex)),
                     gr::io_signature::make(MIN_OUT, MAX_OUT, sizeof (gr_complex))),
-  _auto_gain(false),
+  _auto_gain(true),
   _gRdB(40),
   _lna(0),
   _bcastNotch(0),
   _dabNotch(0),
-  _fsHz(8e6),
+  _fsHz(2e6),
   _decim(1),
   _rfHz(100e6),
-  _bwType(mir_sdr_BW_6_000),
+  _bwType(mir_sdr_BW_1_536),
   _ifType(mir_sdr_IF_Zero),
   _loMode(mir_sdr_LO_Auto),
-  _dcMode(false),
-  _iqMode(false),
+  _dcMode(true),
+  _iqMode(true),
   _buffer(NULL),
   _streaming(false),
   _flowgraphRunning(false),
@@ -246,7 +248,7 @@ void sdrplay_source_c::streamCallback(short *xi, short *xq,
 void sdrplay_source_c::streamCallbackWrap(short *xi, short *xq,
                                           unsigned int firstSampleNum,
                                           int grChanged, int rfChanged, int fsChanged,
-                                          unsigned int numSamples, unsigned int reset,
+                                          unsigned int numSamples, unsigned int reset, unsigned int hwRemoved,
                                           void *cbContext)
 {
   sdrplay_source_c *obj = (sdrplay_source_c *)cbContext;
@@ -260,7 +262,29 @@ void sdrplay_source_c::streamCallbackWrap(short *xi, short *xq,
 void sdrplay_source_c::gainChangeCallback(unsigned int gRdB,
                                           unsigned int lnaGRdB)
 {
-  std::cerr << "GR change, BB+MIX -" << gRdB << "dB, LNA -" << lnaGRdB << std::endl;
+  mir_sdr_GainValuesT gainVals;
+
+  mir_sdr_GetCurrentGain(&gainVals);
+
+  if (gRdB < 200)
+  {
+    std::cerr << "GR change, BB+MIX -" << gRdB << "dB, LNA -" << lnaGRdB << std::endl;
+  }
+
+  if (gRdB < mir_sdr_GAIN_MESSAGE_START_ID)
+  {
+    // gainVals.curr is a calibrated gain value
+  }
+  else if (gRdB == mir_sdr_ADC_OVERLOAD_DETECTED)
+  {
+    mir_sdr_GainChangeCallbackMessageReceived();
+    // OVERLOAD DETECTED
+  }
+  else
+  {
+    mir_sdr_GainChangeCallbackMessageReceived();
+    // OVERLOAD CORRECTED
+  }
 }
 
 // Callback wrapper
