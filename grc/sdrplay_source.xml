@@ -74,18 +74,18 @@ self.$(id).set_bandwidth($bw, 0)
   <param>
     <name>DC Offset Mode</name>
     <key>dc_offset_mode</key>
-    <value>0</value>
+    <value>1</value>
     <type>int</type>
     <option><name>Off</name><key>0</key></option>
-    <option><name>Automatic</name><key>2</key></option>
+    <option><name>Enabled</name><key>1</key></option>
   </param>
   <param>
     <name>IQ Balance Mode</name>
     <key>iq_balance_mode</key>
-    <value>0</value>
+    <value>1</value>
     <type>int</type>
     <option><name>Off</name><key>0</key></option>
-    <option><name>Automatic</name><key>2</key></option>
+    <option><name>Enabled</name><key>1</key></option>
   </param>
   <param>
     <name>Gain Mode</name>
@@ -114,9 +114,11 @@ self.$(id).set_bandwidth($bw, 0)
     <type>string</type>
     <option><name>Default</name><key></key></option>
     <option><name>RX</name><key>RX</key></option>
-    <option><name>A</name><key>A</key></option>
-    <option><name>B</name><key>B</key></option>
-    <option><name>High Z</name><key>HIGHZ</key></option>
+    <option><name>A (RSP2/RSP2pro)</name><key>A</key></option>
+    <option><name>B (RSP2/RSP2pro)</name><key>B</key></option>
+    <option><name>High Z (RSP2/RSP2pro/RSPduo)</name><key>HIGHZ</key></option>
+    <option><name>Tuner 1 50 ohm (RSPduo)</name><key>T1_50ohm</key></option>
+    <option><name>Tuner 2 50 ohm (RSPduo)</name><key>T2_50ohm</key></option>
   </param>
   <param>
     <name>Bandwidth (Hz)</name>

@@ -130,6 +130,9 @@ sdrplay_source_c::sdrplay_source_c (const std::string &args)
   if (_hwVer == 2) {
     _antenna = "A";
   }
+  else if (_hwVer == 3) {
+    _antenna = "T1_50ohm";
+  }
   else {
     _antenna = "RX";
   }
@@ -314,6 +317,8 @@ void sdrplay_source_c::startStreaming(void)
   std::cerr << "Bias voltage: " << _biasT << std::endl;
   if (_hwVer == 2)
     mir_sdr_RSPII_BiasTControl(_biasT);
+  else if (_hwVer == 3)
+    mir_sdr_rspDuo_BiasT(_biasT);
   else if (_hwVer == 255)
     mir_sdr_rsp1a_BiasT(_biasT);
 
@@ -350,7 +355,14 @@ void sdrplay_source_c::startStreaming(void)
     set_antenna(get_antenna(), 0);
     mir_sdr_RSPII_RfNotchEnable(_bcastNotch);
   }
-
+  else if (_hwVer == 3) {
+    set_antenna(get_antenna(), 0);
+    if (_antenna == "HIGHZ")
+      mir_sdr_rspDuo_Tuner1AmNotch(_bcastNotch);
+    else
+      mir_sdr_rspDuo_BroadcastNotch(_bcastNotch);
+    mir_sdr_rspDuo_DabNotch(_dabNotch);
+  }
   else if (_hwVer == 255) {
     mir_sdr_rsp1a_BroadcastNotch(_bcastNotch);
     mir_sdr_rsp1a_DabNotch(_dabNotch);
@@ -532,6 +544,8 @@ osmosdr::gain_range_t sdrplay_source_c::get_gain_range(const std::string & name,
   if (name == "LNA_ATTEN_STEP") {
     if (_hwVer == 2)
       maxLnaState = 8;
+    else if (_hwVer == 3)
+      maxLnaState = 9;
     else if (_hwVer == 255)
       maxLnaState = 9;
     else
@@ -539,16 +553,16 @@ osmosdr::gain_range_t sdrplay_source_c::get_gain_range(const std::string & name,
     for (int i = 0; i <= maxLnaState; i++)
       range += osmosdr::range_t((float)i);
   }
-  // RSP1A, RSP2
+  // RSP1A, RSP2, RSPduo
   else if (name == "BCAST_NOTCH") {
     range += osmosdr::range_t((float)0);
-    if (_hwVer == 2 || _hwVer == 255)
+    if (_hwVer == 2 || _hwVer == 3 || _hwVer == 255)
       range += osmosdr::range_t((float)1);
   }
-  // RSP1A
+  // RSP1A, RSPduo
   else if (name == "DAB_NOTCH") {
     range += osmosdr::range_t((float)0);
-    if (_hwVer == 255)
+    if (_hwVer == 3 || _hwVer == 255)
       range += osmosdr::range_t((float)1);
   }
   else {
@@ -601,6 +615,16 @@ int sdrplay_source_c::checkLNA(int lna)
     else
       lna = std::min(8, lna);
   }
+  else if (_hwVer == 3) {
+    if (_rfHz >= 1000000000)
+      lna = std::min(8, lna);
+    else if (_rfHz < 60000000 && _antenna == "HIGHZ")
+      lna = std::min(4, lna);
+    else if (_rfHz < 60000000)
+      lna = std::min(6, lna);
+    else
+      lna = std::min(9, lna);
+  }
 
   return lna;
 }
@@ -630,13 +654,13 @@ double sdrplay_source_c::set_gain(double gain, const std::string & name, size_t 
     }
   }
   // RSP1A, RSP2
-  else if (name == "BCAST_NOTCH" && (_hwVer == 2 || _hwVer == 255)) {
+  else if (name == "BCAST_NOTCH" && (_hwVer == 2 || _hwVer == 3 ||  _hwVer == 255)) {
     if (int(gain) != _bcastNotch)
       bcastNotchChanged = true;
     _bcastNotch = int(gain);
   }
   // RSP1A
-  else if (name == "DAB_NOTCH" && _hwVer == 255) {
+  else if (name == "DAB_NOTCH" && (_hwVer == 3 || _hwVer == 255)) {
     if (int(gain) != _dabNotch)
       dabNotchChanged = true;
     _dabNotch = int(gain);
@@ -653,10 +677,21 @@ double sdrplay_source_c::set_gain(double gain, const std::string & name, size_t 
       else if (_hwVer == 2) {
         mir_sdr_RSPII_RfNotchEnable(_bcastNotch);
       }
+      else if (_hwVer == 3) {
+        if (_antenna == "HIGHZ")
+          mir_sdr_rspDuo_Tuner1AmNotch(_bcastNotch);
+        else
+          mir_sdr_rspDuo_BroadcastNotch(_bcastNotch);
+      }
     }
 
     if (dabNotchChanged) {
-      mir_sdr_rsp1a_DabNotch(_dabNotch);
+      if (_hwVer == 255) {
+        mir_sdr_rsp1a_DabNotch(_dabNotch);
+      }
+      else if (_hwVer == 3) {
+        mir_sdr_rspDuo_DabNotch(_dabNotch);
+      }
     }
   }
 
@@ -691,6 +726,11 @@ std::vector<std::string> sdrplay_source_c::get_antennas(size_t chan)
     antennas += "B";
     antennas += "HIGHZ";
   }
+  else if (_hwVer == 3) {
+    antennas += "T1_50ohm";
+    antennas += "T2_50ohm";
+    antennas += "HIGHZ";
+  }
   else {
     antennas += "RX";
   }
@@ -719,6 +759,25 @@ std::string sdrplay_source_c::set_antenna(const std::string & antenna, size_t ch
 
       reinitDevice((int)mir_sdr_CHANGE_AM_PORT);
     }
+    else if (_hwVer == 3) {
+      if (antenna == "HIGHZ")
+      {
+        mir_sdr_rspDuo_TunerSel(mir_sdr_rspDuo_Tuner_1);
+        mir_sdr_AmPortSelect(1);
+      }
+      else if(antenna == "T1_50ohm")
+      {
+        mir_sdr_rspDuo_TunerSel(mir_sdr_rspDuo_Tuner_1);
+        mir_sdr_AmPortSelect(0);
+      }
+      else
+      {
+        mir_sdr_rspDuo_TunerSel(mir_sdr_rspDuo_Tuner_2);
+        mir_sdr_AmPortSelect(0);
+      }
+
+      reinitDevice((int)mir_sdr_CHANGE_AM_PORT);
+    }
   }
 
   return antenna;
@@ -733,10 +792,6 @@ void sdrplay_source_c::set_dc_offset_mode(int mode, size_t chan)
 {
   _dcMode = (osmosdr::source::DCOffsetAutomatic == mode);
 
-  if (_dcMode) {
-    mir_sdr_SetDcMode(4, 1);
-    mir_sdr_SetDcTrackTime(63);
-  }
   mir_sdr_DCoffsetIQimbalanceControl(_dcMode, _iqMode);
 }
 
