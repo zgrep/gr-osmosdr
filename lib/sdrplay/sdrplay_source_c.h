@@ -134,13 +134,14 @@ private:
   int checkLNA(int lna);
   void streamCallback(short *xi, short *xq, unsigned int firstSampleNum,
                       int grChanged, int rfChanged, int fsChanged,
-                      unsigned int numSamples, unsigned int reset);
+                      unsigned int numSamples, unsigned int reset,
+                      unsigned int hwRemoved);
   void gainChangeCallback(unsigned int gRdB, unsigned int lnaGRdB);
 
   static void streamCallbackWrap(short *xi, short *xq, unsigned int firstSampleNum,
                                  int grChanged, int rfChanged, int fsChanged,
                                  unsigned int numSamples, unsigned int reset,
-                                 void *cbContext);
+                                 unsigned int hwRemoved, void *cbContext);
   static void gainChangeCallbackWrap(unsigned int gRdB, unsigned int lnaGRdB, void *cbContext);
 
    bool _auto_gain;

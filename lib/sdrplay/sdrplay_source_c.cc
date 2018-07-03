@@ -205,7 +205,8 @@ int sdrplay_source_c::work(int noutput_items,
 void sdrplay_source_c::streamCallback(short *xi, short *xq,
                                       unsigned int firstSampleNum,
                                       int grChanged, int rfChanged, int fsChanged,
-                                      unsigned int numSamples, unsigned int reset)
+                                      unsigned int numSamples, unsigned int reset,
+                                      unsigned int hwRemoved)
 {
   unsigned int i = 0;
   _reinit = false;
@@ -247,13 +248,13 @@ void sdrplay_source_c::streamCallbackWrap(short *xi, short *xq,
                                           unsigned int firstSampleNum,
                                           int grChanged, int rfChanged, int fsChanged,
                                           unsigned int numSamples, unsigned int reset,
-                                          void *cbContext)
+                                          unsigned int hwRemoved, void *cbContext)
 {
   sdrplay_source_c *obj = (sdrplay_source_c *)cbContext;
   obj->streamCallback(xi, xq,
                       firstSampleNum,
                       grChanged, rfChanged, fsChanged,
-                      numSamples, reset);
+                      numSamples, reset, hwRemoved);
 }
 
 // Called by strplay streamer thread when gain reduction is changed.
