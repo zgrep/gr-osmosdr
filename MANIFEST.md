@@ -8,6 +8,7 @@ tags:
     - hackrf
     - soapy
     - sdrplay
+    - sdrplay3
     - uhd
     - osmocom
 author:

@@ -43,7 +43,7 @@ git clone git://git.osmocom.org/gr-osmosdr
 cd gr-osmosdr/
 mkdir build
 cd build/
-cmake ../
+cmake ../    (to enable the SDRplay sources: cmake -DENABLE_NONFREE=TRUE ../)
 make
 sudo make install
 sudo ldconfig

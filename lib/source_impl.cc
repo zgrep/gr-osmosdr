@@ -64,6 +64,10 @@
 #include <sdrplay_source_c.h>
 #endif
 
+#ifdef ENABLE_SDRPLAY3
+#include <sdrplay3_source_c.h>
+#endif
+
 #ifdef ENABLE_HACKRF
 #include <hackrf_source_c.h>
 #endif
@@ -145,6 +149,9 @@ source_impl::source_impl( const std::string &args )
 #ifdef ENABLE_SDRPLAY
   dev_types.push_back("sdrplay");
 #endif
+#ifdef ENABLE_SDRPLAY3
+  dev_types.push_back("sdrplay3");
+#endif
 #ifdef ENABLE_HACKRF
   dev_types.push_back("hackrf");
 #endif
@@ -215,6 +222,10 @@ source_impl::source_impl( const std::string &args )
 #endif
 #ifdef ENABLE_SDRPLAY
     BOOST_FOREACH( std::string dev, sdrplay_source_c::get_devices() )
+      dev_list.push_back( dev );
+#endif
+#ifdef ENABLE_SDRPLAY3
+    BOOST_FOREACH( std::string dev, sdrplay3_source_c::get_devices() )
       dev_list.push_back( dev );
 #endif
 #ifdef ENABLE_BLADERF
@@ -319,6 +330,13 @@ source_impl::source_impl( const std::string &args )
 #ifdef ENABLE_SDRPLAY
     if ( dict.count("sdrplay") ) {
       sdrplay_source_c_sptr src = make_sdrplay_source_c( arg );
+      block = src; iface = src.get();
+    }
+#endif
+
+#ifdef ENABLE_SDRPLAY3
+    if ( dict.count("sdrplay3") ) {
+      sdrplay3_source_c_sptr src = make_sdrplay3_source_c( arg );
       block = src; iface = src.get();
     }
 #endif
