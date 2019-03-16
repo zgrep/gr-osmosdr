@@ -110,13 +110,17 @@ static const int MAX_OUT = 2;
 
 static bool isApiOpen = false;
 
-void sdrplay3_source_c::apiOpen(void)
+bool sdrplay3_source_c::apiOpen(void)
 {
   if (!isApiOpen) {
-    sdrplay_api_Open();
+    sdrplay_api_ErrT err;
+    if ((err = sdrplay_api_Open()) != sdrplay_api_Success)
+      return false;
     isApiOpen = true;
     atexit(apiClose);
+    return true;
   }
+  return true;
 }
 
 void sdrplay3_source_c::apiClose(void)
@@ -161,7 +165,8 @@ sdrplay3_source_c::sdrplay3_source_c (const std::string &args)
     _devIndex = 0;
   }
 
-  apiOpen();
+  if (!apiOpen())
+    return;
 
   unsigned int numDevices;
   sdrplay_api_DeviceT sdrplayDevices[MAX_SUPPORTED_DEVICES];
@@ -597,11 +602,12 @@ void sdrplay3_source_c::reinitDevice(int reason)
 
 std::vector<std::string> sdrplay3_source_c::get_devices()
 {
-  apiOpen();
-
   unsigned int numDevices;
   sdrplay_api_DeviceT sdrplayDevices[MAX_SUPPORTED_DEVICES];
   std::vector<std::string> devices;
+
+  if (!apiOpen())
+    return devices;
 
   sdrplay_api_LockDeviceApi();
   sdrplay_api_GetDevices(sdrplayDevices, &numDevices, MAX_SUPPORTED_DEVICES);

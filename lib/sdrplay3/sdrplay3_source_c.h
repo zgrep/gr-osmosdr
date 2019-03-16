@@ -122,7 +122,7 @@ public:
    osmosdr::freq_range_t get_bandwidth_range( size_t chan = 0 );
 
 private:
-  static void apiOpen(void);
+  static bool apiOpen(void);
   static void apiClose(void);
   void startStreaming(void);
   void stopStreaming(void);
