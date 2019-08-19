@@ -44,8 +44,8 @@
 
 using namespace boost::assign;
 
-#define BUF_SIZE  2304 * 8 * 2
-#define BUF_NUM   15
+#define BUF_SIZE  (16 * 16384)
+#define BUF_NUM   32
 #define BUF_SKIP  1 // buffers to skip due to garbage
 
 #define BYTES_PER_SAMPLE  4 // mirisdr device delivers 16 bit signed IQ data
@@ -83,7 +83,7 @@ miri_source_c::miri_source_c (const std::string &args)
         gr::io_signature::make(MIN_IN, MAX_IN, sizeof (gr_complex)),
         gr::io_signature::make(MIN_OUT, MAX_OUT, sizeof (gr_complex))),
     _running(true),
-    _auto_gain(false),
+    _auto_gain(true),
     _skipped(0)
 {
   int ret;
@@ -115,22 +115,38 @@ miri_source_c::miri_source_c (const std::string &args)
             << mirisdr_get_device_name(dev_index)
             << std::endl;
 
-  _dev = NULL;
-  ret = mirisdr_open( &_dev, dev_index );
-  if (ret < 0)
-    throw std::runtime_error("Failed to open mirisdr device.");
-#if 0
-  ret = mirisdr_set_sample_rate( _dev, 500000 );
-  if (ret < 0)
-    throw std::runtime_error("Failed to set default samplerate.");
+  mirisdr_hw_flavour_t _hw_flavour = MIRISDR_HW_DEFAULT;
 
-  ret = mirisdr_set_tuner_gain_mode(_dev, int(!_auto_gain));
-  if (ret < 0)
-    throw std::runtime_error("Failed to enable manual gain mode.");
+  _dev = NULL;
+  ret = mirisdr_open( &_dev, _hw_flavour, dev_index );
+  if (ret < 0) {
+    throw std::runtime_error("Failed to open mirisdr device.");
+  }
+
+  // ret = mirisdr_set_sample_rate( _dev, 500000 );
+  // if (ret < 0) {
+  //   throw std::runtime_error("Failed to set default samplerate.");
+  // }
+
+  mirisdr_set_sample_format( _dev, (char*)"AUTO" );
+
+#if !defined (_WIN32) || defined(__MINGW32__)
+  mirisdr_set_transfer( _dev, (char*)"ISOC" );
+#else
+  mirisdr_set_transfer( _dev, (char*)"BULK" );
 #endif
+
+  mirisdr_set_if_freq( _dev, 0 );
+
+  // ret = mirisdr_set_tuner_gain_mode(_dev, int(!_auto_gain));
+  // if (ret < 0) {
+  //   throw std::runtime_error("Failed to enable gain mode.");
+  // }
+
   ret = mirisdr_reset_buffer( _dev );
-  if (ret < 0)
+  if (ret < 0) {
     throw std::runtime_error("Failed to reset usb buffers.");
+  }
 
   _buf = (unsigned short **) malloc(_buf_num * sizeof(unsigned short *));
   _buf_lens = (unsigned int *) malloc(_buf_num * sizeof(unsigned int));
@@ -293,7 +309,7 @@ osmosdr::meta_range_t miri_source_c::get_sample_rates()
 {
   osmosdr::meta_range_t range;
 
-  range += osmosdr::range_t( 8000000 ); // known to work
+  range += osmosdr::range_t( 1300000, 15000000 );
 
   return range;
 }
@@ -301,7 +317,10 @@ osmosdr::meta_range_t miri_source_c::get_sample_rates()
 double miri_source_c::set_sample_rate(double rate)
 {
   if (_dev) {
-    mirisdr_set_sample_rate( _dev, (uint32_t)rate );
+    int ret = mirisdr_set_sample_rate( _dev, (uint32_t)rate );
+    if (ret < 0) {
+      std::cerr << "Warning: Failed to set sample rate." << std::endl;
+    }
   }
 
   return get_sample_rate();
@@ -309,10 +328,33 @@ double miri_source_c::set_sample_rate(double rate)
 
 double miri_source_c::get_sample_rate()
 {
-  if (_dev)
+  if (_dev) {
     return (double)mirisdr_get_sample_rate( _dev );
+  }
 
   return 0;
+}
+
+osmosdr::freq_range_t miri_source_c::get_bandwidth_range(size_t chan) {
+  osmosdr::freq_range_t range;
+  range += osmosdr::range_t(200000);
+  range += osmosdr::range_t(300000);
+  range += osmosdr::range_t(600000);
+  range += osmosdr::range_t(1536000);
+  range += osmosdr::range_t(5000000);
+  range += osmosdr::range_t(6000000);
+  range += osmosdr::range_t(7000000);
+  range += osmosdr::range_t(8000000);
+  return range;
+}
+
+double miri_source_c::set_bandwidth(double bandwidth, size_t chan) {
+  mirisdr_set_bandwidth( _dev, bandwidth );
+  return get_bandwidth(chan);
+}
+
+double miri_source_c::get_bandwidth(size_t chan) {
+  return mirisdr_get_bandwidth( _dev );
 }
 
 osmosdr::freq_range_t miri_source_c::get_freq_range( size_t chan )
