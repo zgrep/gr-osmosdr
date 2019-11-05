@@ -88,11 +88,16 @@ miri_source_c::miri_source_c (const std::string &args)
 {
   int ret;
   unsigned int dev_index = 0;
+  unsigned int miri_flavour = 0;
 
   dict_t dict = params_to_dict(args);
 
-  if (dict.count("miri"))
+  if (dict.count("miri")) {
     dev_index = boost::lexical_cast< unsigned int >( dict["miri"] );
+  }
+  if (dict.count("miri_flavour")) {
+    miri_flavour = boost:lexical_cast< unsigned int >( dict["miri_flavour"]);
+  }
 
   _buf_num = _buf_head = _buf_used = _buf_offset = 0;
   _samp_avail = BUF_SIZE / BYTES_PER_SAMPLE;
@@ -116,6 +121,9 @@ miri_source_c::miri_source_c (const std::string &args)
             << std::endl;
 
   mirisdr_hw_flavour_t _hw_flavour = MIRISDR_HW_DEFAULT;
+  if (miri_flavour) {
+    _hw_flavour = MIRISDR_HW_SDRPLAY;
+  }
 
   _dev = NULL;
   ret = mirisdr_open( &_dev, _hw_flavour, dev_index );
