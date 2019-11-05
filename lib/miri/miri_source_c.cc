@@ -414,8 +414,9 @@ osmosdr::gain_range_t miri_source_c::get_gain_range( size_t chan )
     if (count > 0) {
       int* gains = new int[ count ];
       count = mirisdr_get_tuner_gains(_dev, gains);
-      for (int i = 0; i < count; i++)
-        range += osmosdr::range_t( gains[i] / 10.0 );
+      for (int i = 0; i < count; i++) {
+        range += osmosdr::range_t( gains[i] );
+      }
       delete[] gains;
     }
   }
@@ -449,7 +450,7 @@ double miri_source_c::set_gain( double gain, size_t chan )
   osmosdr::gain_range_t rf_gains = miri_source_c::get_gain_range( chan );
 
   if (_dev) {
-    mirisdr_set_tuner_gain( _dev, int(rf_gains.clip(gain) * 10.0) );
+    mirisdr_set_tuner_gain( _dev, int(rf_gains.clip(gain)) );
   }
 
   return get_gain( chan );
@@ -463,7 +464,7 @@ double miri_source_c::set_gain( double gain, const std::string & name, size_t ch
 double miri_source_c::get_gain( size_t chan )
 {
   if ( _dev )
-    return ((double)mirisdr_get_tuner_gain( _dev )) / 10.0;
+    return ((double)mirisdr_get_tuner_gain( _dev ));
 
   return 0;
 }
