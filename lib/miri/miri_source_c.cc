@@ -96,7 +96,7 @@ miri_source_c::miri_source_c (const std::string &args)
     dev_index = boost::lexical_cast< unsigned int >( dict["miri"] );
   }
   if (dict.count("miri_flavour")) {
-    miri_flavour = boost:lexical_cast< unsigned int >( dict["miri_flavour"]);
+    miri_flavour = boost::lexical_cast< unsigned int >( dict["miri_flavour"]);
   }
 
   _buf_num = _buf_head = _buf_used = _buf_offset = 0;
