@@ -55,8 +55,8 @@ static std::vector<double> bandwidths = {
   8000e3
 };
 
-// TODO - RSP1 lower freq is 10e3.
-#define SDRPLAY3_FREQ_MIN 1e3
+// TODO - RSP1 lower freq is 10e3, 1e3 for others.
+#define SDRPLAY3_FREQ_MIN 10e3
 #define SDRPLAY3_FREQ_MAX 2000e6
 
 static std::string hwName(int hwVer)
@@ -432,12 +432,12 @@ void sdrplay3_source_c::eventCallback(sdrplay_api_EventT eventId,
   {
     if (params->powerOverloadParams.powerOverloadChangeType == sdrplay_api_Overload_Detected)
     {
-      sdrplay_api_Update(_device.dev, _device.tuner, sdrplay_api_Update_Ctrl_OverloadMsgAck);
+      sdrplay_api_Update(_device.dev, _device.tuner, sdrplay_api_Update_Ctrl_OverloadMsgAck, sdrplay_api_Update_Ext1_None);
       // OVERLOAD DETECTED
     }
     else if (params->powerOverloadParams.powerOverloadChangeType == sdrplay_api_Overload_Corrected)
     {
-      sdrplay_api_Update(_device.dev, _device.tuner, sdrplay_api_Update_Ctrl_OverloadMsgAck);
+      sdrplay_api_Update(_device.dev, _device.tuner, sdrplay_api_Update_Ctrl_OverloadMsgAck, sdrplay_api_Update_Ext1_None);
       // OVERLOAD CORRECTED
     }
   }
@@ -592,7 +592,7 @@ void sdrplay3_source_c::reinitDevice(int reason)
   _chParams->ctrlParams.decimation.decimationFactor = _decim;
   _chParams->ctrlParams.decimation.wideBandSignal = 1;
 
-  sdrplay_api_Update(_device.dev, _device.tuner, (sdrplay_api_ReasonForUpdateT)reason);
+  sdrplay_api_Update(_device.dev, _device.tuner, (sdrplay_api_ReasonForUpdateT)reason, sdrplay_api_Update_Ext1_None);
 
   _bufferA->ready.notify_one();
   if (_bufferB) {
@@ -771,12 +771,8 @@ bool sdrplay3_source_c::set_gain_mode(bool automatic, size_t chan)
       _chParams->ctrlParams.agc.enable = sdrplay_api_AGC_DISABLE;
     }
     _chParams->ctrlParams.agc.setPoint_dBfs = -30;
-    _chParams->ctrlParams.agc.knee_dBfs = 0;
     _chParams->ctrlParams.agc.decay_ms = 0;
-    _chParams->ctrlParams.agc.decay_ms = 0;
-    _chParams->ctrlParams.agc.hang_ms = 0;
     _chParams->ctrlParams.agc.syncUpdate = 0;
-    _chParams->ctrlParams.agc.LNAstate = checkLNA(_lna);
   }
 
   return _auto_gain;
