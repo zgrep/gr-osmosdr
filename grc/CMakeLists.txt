@@ -41,6 +41,7 @@ add_custom_target(osmosdr_grc_xml_blocks ALL DEPENDS ${xml_blocks})
 install(FILES
     ${xml_blocks}
     sdrplay_source.xml
+    sdrplay3_source.xml
 #    DESTINATION ${GRC_BLOCKS_DIR}
     DESTINATION share/gnuradio/grc/blocks
 )
