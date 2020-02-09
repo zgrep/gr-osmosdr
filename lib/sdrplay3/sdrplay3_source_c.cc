@@ -38,8 +38,6 @@
 #include <iostream>
 #include <mutex>
 
-#define MAX_SUPPORTED_DEVICES   4
-
 using namespace boost::assign;
 
 // Index by sdrplay_api_Bw_MHzT
@@ -135,7 +133,7 @@ sdrplay3_source_c::sdrplay3_source_c (const std::string &args)
   : gr::sync_block ("sdrplay3_source_c",
                     gr::io_signature::make(MIN_IN, MAX_IN, sizeof (gr_complex)),
                     gr::io_signature::make(MIN_OUT, MAX_OUT, sizeof (gr_complex))),
-  _auto_gain(true),
+  _auto_gain(false),
   _gRdB(40),
   _lna(0),
   _bcastNotch(0),
@@ -169,9 +167,9 @@ sdrplay3_source_c::sdrplay3_source_c (const std::string &args)
     return;
 
   unsigned int numDevices;
-  sdrplay_api_DeviceT sdrplayDevices[MAX_SUPPORTED_DEVICES];
+  sdrplay_api_DeviceT sdrplayDevices[SDRPLAY_MAX_DEVICES];
   sdrplay_api_LockDeviceApi();
-  sdrplay_api_GetDevices(sdrplayDevices, &numDevices, MAX_SUPPORTED_DEVICES);
+  sdrplay_api_GetDevices(sdrplayDevices, &numDevices, SDRPLAY_MAX_DEVICES);
   sdrplay_api_UnlockDeviceApi();
   if (_devIndex+1 > numDevices) {
     std::cerr << "Failed to open SDRplay device " + std::to_string(_devIndex) << std::endl;
@@ -181,8 +179,9 @@ sdrplay3_source_c::sdrplay3_source_c (const std::string &args)
   _hwVer = sdrplayDevices[_devIndex].hwVer;
 
   sdrplay_api_DbgLvl_t debug = sdrplay_api_DbgLvl_Disable;
-  if (dict.count("debug") && (boost::lexical_cast<int>(dict["debug"]) != 0))
+  if (dict.count("debug") && (boost::lexical_cast<int>(dict["debug"]) != 0)) {
     debug = sdrplay_api_DbgLvl_Verbose;
+  }
   sdrplay_api_DebugEnable(sdrplayDevices[_devIndex].dev, debug);
 
   if (_hwVer == SDRPLAY_RSP2_ID) {
@@ -459,13 +458,13 @@ void sdrplay3_source_c::startStreaming(void)
     return;
 
   unsigned int numDevices;
-  sdrplay_api_DeviceT sdrplayDevices[MAX_SUPPORTED_DEVICES];
+  sdrplay_api_DeviceT sdrplayDevices[SDRPLAY_MAX_DEVICES];
   if (_device.dev) {
     sdrplay_api_ReleaseDevice(&_device);
     _device = {};
   }
   sdrplay_api_LockDeviceApi();
-  sdrplay_api_GetDevices(sdrplayDevices, &numDevices, MAX_SUPPORTED_DEVICES);
+  sdrplay_api_GetDevices(sdrplayDevices, &numDevices, SDRPLAY_MAX_DEVICES);
   _device = sdrplayDevices[_devIndex];
 
   // set rspDuo mode
@@ -567,7 +566,7 @@ void sdrplay3_source_c::stopStreaming(void)
 void sdrplay3_source_c::reinitDevice(int reason)
 {
   // If no reason given, reinit everything
-  if (reason == sdrplay_api_Update_None)
+  if (reason == sdrplay_api_Update_None) {
     reason = (sdrplay_api_Update_Tuner_Gr |
               sdrplay_api_Update_Dev_Fs |
               sdrplay_api_Update_Tuner_Frf |
@@ -576,6 +575,7 @@ void sdrplay3_source_c::reinitDevice(int reason)
               sdrplay_api_Update_Tuner_LoMode |
               sdrplay_api_Update_Rsp2_AmPortSelect |
               sdrplay_api_Update_RspDuo_AmPortSelect);
+  }
 
   // Tell stream CB to return
   _reinit = true;
@@ -603,14 +603,15 @@ void sdrplay3_source_c::reinitDevice(int reason)
 std::vector<std::string> sdrplay3_source_c::get_devices()
 {
   unsigned int numDevices;
-  sdrplay_api_DeviceT sdrplayDevices[MAX_SUPPORTED_DEVICES];
+  sdrplay_api_DeviceT sdrplayDevices[SDRPLAY_MAX_DEVICES];
   std::vector<std::string> devices;
 
-  if (!apiOpen())
+  if (!apiOpen()) {
     return devices;
+  }
 
   sdrplay_api_LockDeviceApi();
-  sdrplay_api_GetDevices(sdrplayDevices, &numDevices, MAX_SUPPORTED_DEVICES);
+  sdrplay_api_GetDevices(sdrplayDevices, &numDevices, SDRPLAY_MAX_DEVICES);
   sdrplay_api_UnlockDeviceApi();
 
   for (unsigned int i=0; i<numDevices; i++) {
@@ -774,6 +775,8 @@ bool sdrplay3_source_c::set_gain_mode(bool automatic, size_t chan)
     _chParams->ctrlParams.agc.decay_ms = 0;
     _chParams->ctrlParams.agc.syncUpdate = 0;
   }
+
+  reinitDevice(sdrplay_api_Update_Ctrl_Agc);
 
   return _auto_gain;
 }
