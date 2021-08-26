@@ -31,12 +31,11 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/assign.hpp>
 #include <boost/format.hpp>
+#include <boost/chrono.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/condition_variable.hpp>
-#include <boost/chrono.hpp>
 
 #include <iostream>
-#include <mutex>
 
 using namespace boost::assign;
 

@@ -172,7 +172,7 @@ message (STATUS " Found Volk: ${Volk_FOUND}")
 
 find_package(LibRTLSDR)
 if(ENABLE_NONFREE)
-    find_package(LibSDRplay)
+    find_package(LibSDRplay3)
 endif(ENABLE_NONFREE)
 find_package(LibHackRF)
 find_package(LibAIRSPY)

@@ -24,9 +24,8 @@
 #define INCLUDED_SDRPLAY3_SOURCE_C_H
 
 #include <gnuradio/sync_block.h>
-#include <gnuradio/thread/thread.h>
 
-#include "osmosdr/ranges.h"
+#include <gnuradio/thread/thread.h>
 
 #include "source_iface.h"
 
@@ -82,9 +81,6 @@ public:
             gr_vector_const_void_star &input_items,
             gr_vector_void_star &output_items );
 
-   bool start( void );
-   bool stop( void );
-
    static std::vector< std::string > get_devices();
 
    size_t get_num_channels( void );
@@ -120,6 +116,10 @@ public:
    double set_bandwidth( double bandwidth, size_t chan = 0 );
    double get_bandwidth( size_t chan = 0 );
    osmosdr::freq_range_t get_bandwidth_range( size_t chan = 0 );
+
+protected:
+  bool start( void );
+  bool stop( void );
 
 private:
   static bool apiOpen(void);

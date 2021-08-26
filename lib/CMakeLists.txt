@@ -176,22 +176,12 @@ if(ENABLE_UHD)
 endif(ENABLE_UHD)
 
 ########################################################################
-# Setup SDRplay component
-########################################################################
-if(ENABLE_NONFREE)
-GR_REGISTER_COMPONENT("SDRplay RSP (NONFREE)" ENABLE_SDRPLAY LIBSDRPLAY_FOUND)
-if(ENABLE_SDRPLAY)
-    add_subdirectory(sdrplay)
-endif(ENABLE_SDRPLAY)
-endif(ENABLE_NONFREE)
-
-########################################################################
 # Setup SDRplay3 component
 ########################################################################
 if(ENABLE_NONFREE)
 GR_REGISTER_COMPONENT("SDRplay RSP API 3.x (NONFREE)" ENABLE_SDRPLAY3 LIBSDRPLAY3_FOUND)
 if(ENABLE_SDRPLAY3)
-GR_INCLUDE_SUBDIRECTORY(sdrplay3)
+    add_subdirectory(sdrplay3)
 endif(ENABLE_SDRPLAY3)
 endif(ENABLE_NONFREE)
 

@@ -49,10 +49,6 @@
 #include <uhd_source_c.h>
 #endif
 
-#ifdef ENABLE_SDRPLAY
-#include <sdrplay_source_c.h>
-#endif
-
 #ifdef ENABLE_SDRPLAY3
 #include <sdrplay3_source_c.h>
 #endif
@@ -157,12 +153,8 @@ devices_t device::find(const device_t &hint)
   for (std::string dev : uhd_source_c::get_devices())
     devices.push_back( device_t(dev) );
 #endif
-#ifdef ENABLE_SDRPLAY
-  for (std::string dev : sdrplay_source_c::get_devices())
-    devices.push_back( device_t(dev) );
-#endif
 #ifdef ENABLE_SDRPLAY3
-  BOOST_FOREACH( std::string dev, sdrplay3_source_c::get_devices() )
+  for (std::string dev : sdrplay3_source_c::get_devices())
     devices.push_back( device_t(dev) );
 #endif
 #ifdef ENABLE_BLADERF

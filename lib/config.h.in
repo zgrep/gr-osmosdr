@@ -9,7 +9,6 @@
 #cmakedefine ENABLE_RTL
 #cmakedefine ENABLE_RTL_TCP
 #cmakedefine ENABLE_UHD
-#cmakedefine ENABLE_SDRPLAY
 #cmakedefine ENABLE_SDRPLAY3
 #cmakedefine ENABLE_HACKRF
 #cmakedefine ENABLE_BLADERF
