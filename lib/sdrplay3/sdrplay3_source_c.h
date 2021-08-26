@@ -190,6 +190,7 @@ private:
    sdrplay_api_TunerSelectT _tuner;
    sdrplay_api_RspDuoModeT _rspDuoMode;
    sdrplay_api_DeviceParamsT *_deviceParams;
+   sdrplay_api_DeviceParamsT _deviceParamsHolder;
    sdrplay_api_RxChannelParamsT *_chParams;
 };
 

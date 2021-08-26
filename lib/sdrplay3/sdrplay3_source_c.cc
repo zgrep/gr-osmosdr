@@ -152,7 +152,8 @@ sdrplay3_source_c::sdrplay3_source_c (const std::string &args)
   _reinit(false),
   _device({}),
   _tuner(sdrplay_api_Tuner_A),
-  _rspDuoMode(sdrplay_api_RspDuoMode_Unknown)
+  _rspDuoMode(sdrplay_api_RspDuoMode_Unknown),
+  _deviceParams(nullptr)
 {
   dict_t dict = params_to_dict(args);
   if (dict.count("sdrplay3")) {
@@ -476,6 +477,8 @@ void sdrplay3_source_c::startStreaming(void)
   if (_streaming)
     return;
 
+  sdrplay_api_ErrT err;
+
   unsigned int numDevices;
   sdrplay_api_DeviceT sdrplayDevices[SDRPLAY_MAX_DEVICES];
   if (_device.dev) {
@@ -500,8 +503,15 @@ void sdrplay3_source_c::startStreaming(void)
     _device.rspDuoMode = _rspDuoMode;
   }
 
-  sdrplay_api_SelectDevice(&_device);
-  sdrplay_api_UnlockDeviceApi();
+  err = sdrplay_api_SelectDevice(&_device);
+  if (err != sdrplay_api_Success) {
+    std::cerr << "Could not select device, got error: " << sdrplay_api_GetErrorString(err) << std::endl;
+  }
+
+  err = sdrplay_api_UnlockDeviceApi();
+  if (err != sdrplay_api_Success) {
+    std::cerr << "Could not unlock device API, got error: " << sdrplay_api_GetErrorString(err) << std::endl;
+  }
 
   std::cerr << "Using SDRplay API 3.x " << hwName(_hwVer) << " "
             << _device.SerNo << std::endl;
@@ -510,7 +520,16 @@ void sdrplay3_source_c::startStreaming(void)
               << "tuner " << tunerName(_tuner) << std::endl;
   }
 
-  sdrplay_api_GetDeviceParams(_device.dev, &_deviceParams);
+  err = sdrplay_api_GetDeviceParams(_device.dev, &_deviceParams);
+  if (err != sdrplay_api_Success) {
+    std::cerr << "Could not get device params, got error: " << sdrplay_api_GetErrorString(err) << std::endl;
+  }
+  if (_deviceParams == NULL) {
+    std::cerr << "_deviceParams is NULL, which is probably not good." << std::endl;
+  }
+  if (_deviceParams == nullptr) {
+    std::cerr << "_deviceParams is nullptr, which it should not be any more." << std::endl;
+  }
   _chParams = _device.tuner == sdrplay_api_Tuner_B ? _deviceParams->rxChannelB : _deviceParams->rxChannelA;
 
   // Set bias voltage on/off (RSP1A/RSP2).
