@@ -157,8 +157,7 @@ sdrplay3_source_c::sdrplay3_source_c (const std::string &args)
   dict_t dict = params_to_dict(args);
   if (dict.count("sdrplay3")) {
     _devIndex = boost::lexical_cast<unsigned int>(dict["sdrplay3"]);
-  }
-  else {
+  } else {
     _devIndex = 0;
   }
 
@@ -170,6 +169,27 @@ sdrplay3_source_c::sdrplay3_source_c (const std::string &args)
   sdrplay_api_LockDeviceApi();
   sdrplay_api_GetDevices(sdrplayDevices, &numDevices, SDRPLAY_MAX_DEVICES);
   sdrplay_api_UnlockDeviceApi();
+
+  if (dict.count("serial")) {
+    bool found = false;
+    for (unsigned int i = 0; i < numDevices; i++) {
+      std::string serno(sdrplayDevices[i].SerNo);
+      if (serno == dict["serial"]) {
+        if (_devIndex > 0) {
+          _devIndex--;
+        } else {
+          found = true;
+          _devIndex = i;
+          break;
+        }
+      }
+    }
+    if (!found) {
+      std::cerr << "Failed to find SDRplay device " + dict["serial"] << std::endl;
+      throw std::runtime_error("Failed to find SDRplay device " + dict["serial"]);
+    }
+  }
+
   if (_devIndex+1 > numDevices) {
     std::cerr << "Failed to open SDRplay device " + std::to_string(_devIndex) << std::endl;
     throw std::runtime_error("Failed to open SDRplay device " + std::to_string(_devIndex));
