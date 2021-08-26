@@ -29,12 +29,11 @@
 
 #include <boost/assign.hpp>
 #include <boost/format.hpp>
-#include <boost/thread/mutex.hpp>
-#include <boost/thread/condition_variable.hpp>
+#include <mutex>
+#include <condition_variable>
 #include <boost/chrono.hpp>
 
 #include <iostream>
-#include <mutex>
 
 #define MAX_SUPPORTED_DEVICES   4
 
@@ -164,14 +163,14 @@ sdrplay_source_c::~sdrplay_source_c ()
 
 bool sdrplay_source_c::start(void)
 {
-  boost::mutex::scoped_lock lock(_bufferMutex);
+  std::scoped_lock lock(_bufferMutex);
   _flowgraphRunning = true;
   return true;
 }
 
 bool sdrplay_source_c::stop(void)
 {
-  boost::mutex::scoped_lock lock(_bufferMutex);
+  std::scoped_lock lock(_bufferMutex);
   _flowgraphRunning = false;
   // FG may be modified, so assume copied pointer is invalid
   _buffer = NULL;
@@ -188,7 +187,7 @@ int sdrplay_source_c::work(int noutput_items,
     startStreaming();
 
   {
-    boost::mutex::scoped_lock lock(_bufferMutex);
+    std::scoped_lock lock(_bufferMutex);
     _buffer = out;
     _bufferSpaceRemaining = noutput_items;
     _bufferOffset = 0;
@@ -216,7 +215,7 @@ void sdrplay_source_c::streamCallback(short *xi, short *xq,
   unsigned int i = 0;
   _reinit = false;
 
-  boost::mutex::scoped_lock lock(_bufferMutex);
+  std::scoped_lock lock(_bufferMutex);
 
   while (i < numSamples) {
 

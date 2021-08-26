@@ -1,6 +1,5 @@
 /* -*- c++ -*- */
 /*
- * Copyright 2018 Jeff Long <willcode4@gmail.com>
  * Copyright 2015 SDRplay Ltd <support@sdrplay.com>
  * Copyright 2012 Dimitri Stolnikov <horiz0n@gmx.net>
  *
@@ -23,7 +22,11 @@
 #define INCLUDED_SDRPLAY_SOURCE_C_H
 
 #include <gnuradio/sync_block.h>
+
 #include <gnuradio/thread/thread.h>
+
+#include <mutex>
+#include <condition_variable>
 
 #include "osmosdr/ranges.h"
 
@@ -32,6 +35,7 @@
 #include <mirsdrapi-rsp.h>
 
 class sdrplay_source_c;
+typedef struct sdrplay_dev sdrplay_dev_t;
 
 template <typename T>
 struct Range {
@@ -167,8 +171,8 @@ private:
    gr_complex *_buffer;
    int _bufferOffset;
    int _bufferSpaceRemaining;
-   boost::mutex _bufferMutex;
-   boost::condition_variable _bufferReady;  // buffer is ready to move to other thread
+   std::mutex _bufferMutex;
+   std::condition_variable _bufferReady;  // buffer is ready to move to other thread
 
    bool _streaming;
    bool _flowgraphRunning;
